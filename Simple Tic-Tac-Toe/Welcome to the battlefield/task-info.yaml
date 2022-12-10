@@ -1,0 +1,67 @@
+type: edu
+custom_name: Welcome to the battlefield!
+files:
+- name: test/__init__.py
+  visible: false
+  learner_created: false
+- name: test/tests.py
+  visible: false
+  text: |
+    from hstest.stage_test import *
+    from hstest.test_case import TestCase
+    import re
+
+    CheckResult.correct = lambda: CheckResult(True, '')
+    CheckResult.wrong = lambda feedback: CheckResult(False, feedback)
+
+
+    class TicTacToeTest(StageTest):
+        def generate(self) -> List[TestCase]:
+            return [TestCase()]
+
+        def check(self, reply: str, attach: str) -> CheckResult:
+            reply = re.sub("\\s+", "", reply)
+            if len(reply) > 9:
+                return CheckResult(False, "You need to output no more than 9 symbols")
+            have_x = False
+            have_o = False
+            for c in reply:
+                if c != 'X' and c != 'O':
+                    return CheckResult(False,
+                           "You need to output X and O "
+                           + "symbols only not counting spaces. Found: '" + c + "'")
+                if c == 'X':
+                    have_x = True
+                if c == 'O':
+                    have_o = True
+            if not have_x:
+                return CheckResult.wrong("You need to output at least one X")
+            if not have_o:
+                return CheckResult.wrong("You need to output at least one O")
+            return CheckResult.correct()
+
+
+    if __name__ == '__main__':
+        TicTacToeTest().run_tests()
+  learner_created: false
+- name: tests.py
+  visible: false
+  text: |
+    from test.tests import TicTacToeTest
+
+    if __name__ == '__main__':
+        TicTacToeTest().run_tests()
+  learner_created: false
+- name: tictactoe.py
+  visible: true
+  text: '# write your code here'
+  learner_created: false
+feedback_link: https://hyperskill.org/learn/step/6503#comment
+status: Failed
+feedback:
+  message: "Wrong answer in test #1\n\nYou need to output no more than 9 symbols\n\
+    \nPlease find below the output of your program during this failed test.\nNote\
+    \ that the '>' character indicates the beginning of the input line.\n\n---\n\n\
+    > \n---------\n---------"
+  time: "Fri, 09 Dec 2022 15:05:45 UTC"
+record: 1
