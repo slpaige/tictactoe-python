@@ -41,6 +41,9 @@ def count_each_entry():
     global count_x
     global count_o
 
+    count_x = 0
+    count_o = 0
+
     for row in placement_matrix:
         for col in row:
             if col == "X":
@@ -51,6 +54,7 @@ def count_each_entry():
 
 def generate_matrix():
     global played_coords
+    placement_matrix.clear()
 
     for x, row in enumerate(grid_build):
         # build matrix row
@@ -61,7 +65,7 @@ def generate_matrix():
         y_count = 0
         for col in row_split:
             placement_matrix[x].append(col)
-            if not col == "_" and not col == " ":
+            if col == "X" or col == "O":
                 played_coords.add(f"{x} {y_count}")
             y_count += 1
 
@@ -71,6 +75,36 @@ def render_game_grid():
     for row in placement_matrix:
         print(f"| {' '.join(row)} |")
     print("---------")
+
+
+def player_turn():
+    while True:
+        placement = input()
+        regex_coords = re.search("^[1-3] [1-3]$", placement)
+        regex_text = re.search("^[^0-9]+\s?[^0-9]", placement)
+
+        if regex_text:
+            print("You should enter numbers")
+            continue
+
+        if not regex_coords:
+            print("Coordinates should be from 1 to 3!")
+            continue
+
+        if regex_coords:
+            player_coords = placement.split(' ')
+            player_row = int(player_coords[0]) - 1
+            player_col = int(player_coords[1]) - 1
+
+            # check already played coords
+            if f"{player_row} {player_col}" in played_coords:
+                print("This cell is occupied! Choose another one!")
+            else:
+                # update game grid
+                temp_list = list(grid_build[player_row])
+                temp_list[player_col] = "X" if player_one else "O"
+                grid_build[player_row] = "".join(temp_list)
+                break
 
 
 # row:col
@@ -90,47 +124,36 @@ count_o = 0
 x_three_row = False
 o_three_row = False
 
-grid_build = re.findall("...", input())
+# grid_build = re.findall("...", input())
+grid_build = ["   ", "   ", "   "]
+player_one = True
+
 generate_matrix()
 render_game_grid()
 
+# game loop
 while True:
-    placement = input()
-    regex_coords = re.search("^[1-3] [1-3]$", placement)
-    regex_text = re.search("^[^0-9]+\s?[^0-9]", placement)
+    player_turn()
+    generate_matrix()
+    render_game_grid()
+    check_game_state()
 
-    if regex_text:
-        print("You should enter numbers")
-        continue
-
-    if not regex_coords:
-        print("Coordinates should be from 1 to 3!")
-        continue
-
-    if regex_coords:
-        player_coords = placement.split(' ')
-        player_row = int(player_coords[0]) - 1
-        player_col = int(player_coords[1]) - 1
-
-        # check already played coords
-
-        # update game grid
-
+    if abs(count_x - count_o) > 1:
+        print("Impossible")
         break
+    elif x_three_row and o_three_row:
+        print("Impossible")
+        break
+    elif x_three_row:
+        print("X wins")
+        break
+    elif o_three_row:
+        print("O wins")
+        break
+    elif count_x + count_o == 9:
+        print("Draw")
+        break
+    # elif count_x + count_o < 9:
+    #     print("Game not finished")
 
-render_game_grid()
-
-# check_game_state()
-#
-# if abs(count_x - count_o) > 1:
-#     print("Impossible")
-# elif x_three_row and o_three_row:
-#     print("Impossible")
-# elif x_three_row:
-#     print("X wins")
-# elif o_three_row:
-#     print("O wins")
-# elif count_x + count_o == 9:
-#     print("Draw")
-# elif count_x + count_o < 9:
-#     print("Game not finished")
+    player_one = not player_one

@@ -39,7 +39,7 @@ class TicTacToeField:
 
             for row in range(3):
                 for col in range(3):
-                    index = row * 3 + col
+                    index = (2 - row) * 3 + col
                     self.field[row][col] = get_state(field[index])
 
     def equal_to(self, other) -> bool:
@@ -48,6 +48,9 @@ class TicTacToeField:
                 if self.field[i][j] != other.field[i][j]:
                     return False
         return True
+
+    def get(self, x: int, y: int) -> FieldState:
+        return self.field[y - 1][x - 1]
 
     def has_next_as(self, other) -> bool:
         improved: bool = False
@@ -77,6 +80,39 @@ class TicTacToeField:
             or other.has_next_as(self)
         )
 
+    def is_winning(self, side: FieldState):
+        if side == FieldState.FREE:
+            return False
+
+        for i in 1, 2, 3:
+            if (self.get(i, 1) == side and
+                self.get(i, 2) == side and
+                self.get(i, 3) == side):
+                return True
+            if (self.get(1, i) == side and
+                self.get(2, i) == side and
+                self.get(3, i) == side):
+                return True
+
+        if (self.get(1, 1) == side and
+            self.get(2, 2) == side and
+            self.get(3, 3) == side):
+            return True
+
+        if (self.get(1, 3) == side and
+            self.get(2, 2) == side and
+            self.get(3, 1) == side):
+            return True
+
+    def is_draw(self):
+        if self.is_winning(FieldState.X) or self.is_winning(FieldState.O):
+            return False
+        for i in 1, 2, 3:
+            for j in 1, 2, 3:
+                if self.get(i, j) == FieldState.FREE:
+                    return False
+        return True
+
     @staticmethod
     def parse(field_str: str):
 
@@ -99,10 +135,6 @@ class TicTacToeField:
         ]
 
         y: int = 0
-
-        if len(lines) != 3:
-            raise WrongAnswer(
-                f"Tic-Tac-Toe field should contain 3 rows, found {len(lines)}")
 
         try:
             for line in lines:
@@ -175,73 +207,118 @@ class TicTacToeTest(StageTest):
         tests: List[TestCase] = []
 
         i: int = 0
+        for input in inputs:
+            full_move_input = iterate_cells(input)
 
-        start_fields = (
-            "_XXOO_OX_",
-            "_________",
-            "X_X_O____"
-        )
+            str_nums = input.split()
+            x = int(str_nums[0])
+            y = int(str_nums[1])
 
-        for start_field in start_fields:
-            for input in inputs:
-                full_input = iterate_cells(input)
+            if i % 2 == 1:
+                full_move_input = f'4 {i}\n' + full_move_input
 
-                str_nums = input.split()
-                x = int(str_nums[0])
-                y = int(str_nums[1])
+            full_game_input = ''
+            for _ in range(9):
+                full_game_input += full_move_input
 
-                if i % 2 == 1:
-                    full_input = f'4 {i}\n' + full_input
+            tests += [
+                TestCase(
+                    stdin=full_game_input,
+                    attach=(x, y)
+                )
+            ]
 
-                tests += [
-                    TestCase(
-                        stdin=start_field + '\n' + full_input,
-                        attach=(start_field, x, y)
-                    )
-                ]
-
-                i += 1
+            i += 1
 
         return tests
 
     def check(self, reply: str, attach: str) -> CheckResult:
 
-        clue_input, clue_x, clue_y = attach
+        clue_x, clue_y = attach
 
         fields = TicTacToeField.parse_all(reply)
 
-        if len(fields) != 2:
+        if len(fields) == 0:
             return CheckResult.wrong(
-                f"You should output exactly 2 fields, found: {len(fields)}"
+                "No fields found"
             )
 
-        curr: TicTacToeField = fields[0]
-        next: TicTacToeField = fields[1]
+        for i in range(1, len(fields)):
+            curr: TicTacToeField = fields[i - 1]
+            next: TicTacToeField = fields[i]
 
-        correct_curr = TicTacToeField(field=clue_input)
-        correct_next = TicTacToeField(constructed=correct_curr.field)
+            stayed = curr.equal_to(next)
+            improved = curr.has_next_as(next)
 
-        num_inputs = iterate_cells(f'{clue_x} {clue_y}').split('\n')
+            if not (stayed or improved):
+                return CheckResult.wrong(
+                    "For two fields following each " +
+                    "other one is not a continuation " +
+                    "of the other (they differ more than in two places)."
+                )
 
-        for input in num_inputs:
-            str_nums = input.split()
-            x = int(str_nums[0])
-            y = int(str_nums[1])
-            if correct_next.field[x - 1][y - 1] == FieldState.FREE:
-                correct_next.field[x - 1][y - 1] = FieldState.X
-                break
+        lines = reply.splitlines()
+        last_line = lines[-1]
 
-        if not curr.equal_to(correct_curr):
+        if not ('X wins' in last_line or 'O wins' in last_line or 'Draw' in last_line):
             return CheckResult.wrong(
-                "The first field is not equal to the input field"
+                "Can't parse final result, " +
+                "should contain \"Draw\", \"X wins\" or \"O wins\".\n" +
+                "Your last line: \"" + last_line + "\""
             )
 
-        if not next.equal_to(correct_next):
+        if 'X wins' in last_line and 'O wins' in last_line:
             return CheckResult.wrong(
-                "The first field is correct, but the second is not"
+                "Your final result contains \"X wins\" and \"O wins\" " +
+                "at the same time. This is impossible.\n" +
+                "Your last line: \"" + last_line + "\""
             )
 
-        return CheckResult.correct()
+        if 'X wins' in last_line and 'Draw' in last_line:
+            return CheckResult.wrong(
+                "Your final result contains \"X wins\" and \"Draw\" " +
+                "at the same time. This is impossible.\n" +
+                "Your last line: \"" + last_line + "\""
+            )
+
+        if 'O wins' in last_line and 'Draw' in last_line:
+            return CheckResult.wrong(
+                "Your final result contains \"O wins\" and \"Draw\" " +
+                "at the same time. This is impossible.\n" +
+                "Your last line: \"" + last_line + "\""
+            )
+
+        last_field: TicTacToeField = fields[-1]
+
+        if last_field.is_winning(FieldState.X) and 'X wins' not in last_line:
+            return CheckResult.wrong(
+                "Your last field shows that X wins, " +
+                "and your last line should contain \"X wins\".\n" +
+                "Your last line: \"" + last_line + "\""
+            )
+
+        if last_field.is_winning(FieldState.O) and 'O wins' not in last_line:
+            return CheckResult.wrong(
+                "Your last field shows that O wins, " +
+                "and your last line should contain \"O wins\".\n" +
+                "Your last line: \"" + last_line + "\""
+            )
+
+        if last_field.is_draw() and 'Draw' not in last_line:
+            return CheckResult.wrong(
+                "Your last field shows that there is a draw, " +
+                "and your last line should contain \"Draw\".\n" +
+                "Your last line: \"" + last_line + "\""
+            )
+
+        if (last_field.is_winning(FieldState.X) or
+            last_field.is_winning(FieldState.O) or last_field.is_draw()):
+            return CheckResult.correct()
+
+        return CheckResult.wrong(
+            "Your last field contains unfinished game, "
+            "the game should be finished!"
+        )
 
 
 if __name__ == '__main__':

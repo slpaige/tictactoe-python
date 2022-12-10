@@ -346,5 +346,8 @@ files:
         TicTacToeTest().run_tests()
   learner_created: false
 feedback_link: https://hyperskill.org/learn/step/6507#comment
-status: Unchecked
+status: Solved
+feedback:
+  message: Congratulations!
+  time: "Sat, 10 Dec 2022 21:56:13 UTC"
 record: -1
